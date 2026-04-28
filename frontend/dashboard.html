@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog REST API - Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <div class="container nav-container">
+            <nav>
+                <a href="index.html" class="brand">BlogAPI</a>
+                <div class="nav-links">
+                    <a href="index.html">Home</a>
+                    <!-- Auth Links -->
+                    <a href="dashboard.html" class="btn btn-primary">Dashboard</a>
+                    <button onclick="auth.logout()" class="btn">Logout</button>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <h1 class="mb-2">Dashboard</h1>
+        
+        <!-- Post Editor Modal / Form -->
+        <div class="card mb-2" id="editor-card">
+            <h3 id="editor-title">Create New Post</h3>
+            <div id="editor-error" class="alert alert-error hidden"></div>
+            <form id="post-form">
+                <input type="hidden" id="post-id">
+                <div class="form-group">
+                    <label for="title">Title</label>
+                    <input type="text" id="title" required placeholder="Enter post title">
+                </div>
+                <div class="form-group">
+                    <label for="body">Content</label>
+                    <textarea id="body" rows="6" required placeholder="Write your post content here..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="status">Status</label>
+                    <select id="status">
+                        <option value="draft">Draft</option>
+                        <option value="published">Published</option>
+                        <option value="archived">Archived</option>
+                    </select>
+                </div>
+                <div class="flex gap-1">
+                    <button type="submit" class="btn btn-primary" id="btn-save">Save Post</button>
+                    <button type="button" class="btn hidden" id="btn-cancel" onclick="resetEditor()">Cancel Edit</button>
+                </div>
+            </form>
+        </div>
+
+        <h3>Your Posts</h3>
+        <div id="my-posts-container">
+            <div class="skeleton skeleton-title"></div>
+            <div class="skeleton skeleton-text"></div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 Blog REST API. Built with Vanilla JS & CSS.</p>
+        </div>
+    </footer>
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+</html>

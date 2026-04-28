@@ -67,9 +67,8 @@ class AuthController
         }
 
         // --- Fix: Prevent Mass Assignment / Privilege Escalation ---
-        // Do not allow users to specify their own role during public registration.
-        // All new accounts default to 'reader'. Higher privileges must be granted manually.
-        $role = 'reader';
+        // All new accounts default to 'author' so any registered user can create posts.
+        $role = 'author';
 
         if (!empty($errors)) {
             throw new ValidationException($errors);

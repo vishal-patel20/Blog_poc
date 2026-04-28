@@ -1,0 +1,52 @@
+- [ ] **Phase 1: Project Setup & Environment**
+  - [ ] Initialize `composer.json` and install PHPUnit.
+  - [ ] Create directory structure (`public`, `src/Controllers`, `src/Models`, `src/Core`, `src/Exceptions`, `database/migrations`, `tests`).
+  - [ ] Set up `.gitignore`.
+  - [ ] Set up `README.md`.
+
+- [ ] **Phase 2: Core Architecture (Custom Framework)**
+  - [ ] Create `Router.php` to handle HTTP methods and routes (Support GET, POST, PUT, PATCH, DELETE).
+  - [ ] Create `Request.php` to wrap `$_SERVER` and `php://input`.
+  - [ ] Create `Response.php` to build JSON responses and status codes.
+  - [ ] Create `Database.php` using the Singleton pattern for PDO connection.
+  - [ ] Create custom exceptions (`NotFoundException`, `ValidationException`).
+  - [ ] Front controller setup (`public/index.php`) catching all requests and errors.
+
+- [ ] **Phase 3: Database & Models**
+  - [ ] **Base Model & Repository Setup**
+    - [ ] Create `BaseModel` abstract class.
+    - [ ] Create `RepositoryInterface` interface.
+    - [ ] Create `Timestampable` trait.
+  - [ ] Create Database Migrations (Tables: `posts` and `comments` with soft deletes).
+  - [ ] Create `Post` and `Comment` models integrating the trait and base class.
+
+- [ ] **Phase 4: Repositories & Controllers**
+  - [ ] Create `PostRepository` implementing `RepositoryInterface`.
+  - [ ] Create `CommentRepository`.
+  - [ ] Create `PostController` to handle standard CRUD requests.
+    - [ ] GET `/api/posts` (Paginated list)
+    - [ ] GET `/api/posts/{id}` (Single post, 404 if not found)
+    - [ ] POST `/api/posts` (Create with validation)
+    - [ ] PUT `/api/posts/{id}` (Full update)
+    - [ ] PATCH `/api/posts/{id}` (Partial update)
+    - [ ] DELETE `/api/posts/{id}` (Soft-delete)
+  - [ ] Create `CommentController`.
+    - [ ] GET `/api/posts/{id}/comments`
+    - [ ] POST `/api/posts/{id}/comments`
+
+- [ ] **Phase 5: Git & GitHub Workflow Integration**
+  - [ ] Create `develop` branch.
+  - [ ] Perform work in feature branches:
+    - [ ] `feature/router`
+    - [ ] `feature/post-crud`
+    - [ ] `feature/comments`
+    - [ ] `feature/validation`
+  - [ ] Format commits using Conventional Commits.
+  - [ ] *(Manual)*: Create PRs on GitHub, review, and merge to develop, then main.
+
+- [ ] **Phase 6: Testing & Quality Assurance**
+  - [ ] Install and configure PHP CodeSniffer for PSR-12 compliance.
+  - [ ] Run: `./vendor/bin/phpcs --standard=PSR12 src/`
+  - [ ] Write at least 5 PHPUnit tests covering model and repository methods.
+  - [ ] Run tests and ensure all pass.
+  - [ ] Generate Postman Collection.

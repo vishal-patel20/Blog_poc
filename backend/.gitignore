@@ -1,0 +1,9 @@
+vendor/
+database/database.sqlite
+database/rate_limits.json
+*.log
+.DS_Store
+
+# Environment secrets — NEVER commit the live .env
+# Commit only .env.example (contains no real values)
+.env

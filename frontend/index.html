@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog REST API - Home</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <div class="container nav-container">
+            <nav>
+                <a href="index.html" class="brand">BlogAPI</a>
+                <div class="nav-links">
+                    <a href="index.html">Home</a>
+                    <!-- Guest Links -->
+                    <a href="login.html" class="btn btn-primary guest-only">Login</a>
+                    <a href="register.html" class="guest-only">Register</a>
+                    
+                    <!-- Auth Links -->
+                    <a href="dashboard.html" class="auth-required hidden">Dashboard</a>
+                    <span class="auth-required hidden" style="color: var(--text-muted);">Hi, <span id="current-user-name"></span></span>
+                    <button onclick="auth.logout()" class="btn auth-required hidden">Logout</button>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <div class="hero">
+        <div class="container">
+            <h1 class="gradient-text">Welcome to BlogAPI</h1>
+            <p>A professional platform to share your thoughts, read amazing articles, and connect with other writers.</p>
+        </div>
+    </div>
+
+    <main class="container">
+        <div class="flex justify-between align-center mb-2">
+            <h2>Latest Posts</h2>
+            <a href="dashboard.html" class="btn btn-primary auth-required hidden">+ Create Post</a>
+        </div>
+
+        <div id="posts-container">
+            <!-- Skeleton loaders -->
+            <div class="card mb-1">
+                <div class="skeleton skeleton-title"></div>
+                <div class="skeleton skeleton-text"></div>
+                <div class="skeleton skeleton-text skeleton-text-short"></div>
+            </div>
+            <div class="card mb-1">
+                <div class="skeleton skeleton-title"></div>
+                <div class="skeleton skeleton-text"></div>
+                <div class="skeleton skeleton-text skeleton-text-short"></div>
+            </div>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div class="pagination flex justify-between align-center mt-2 hidden" id="pagination-controls">
+            <button class="btn" id="btn-prev" disabled>Previous</button>
+            <span id="page-info">Page <span id="current-page">1</span> of <span id="total-pages">1</span></span>
+            <button class="btn" id="btn-next" disabled>Next</button>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 Blog REST API. Built with Vanilla JS & CSS.</p>
+        </div>
+    </footer>
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
