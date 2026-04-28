@@ -27,7 +27,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     const parsed = JSON.parse(error.message);
                     if (parsed.errors) {
-                        const messages = Object.values(parsed.errors).flat();
+                        const escapeHtml = (s) => (s||'').toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+                        const messages = Object.values(parsed.errors).flat().map(escapeHtml);
                         errorDiv.innerHTML = messages.join('<br>');
                     } else {
                         errorDiv.textContent = parsed.message || error.message;
