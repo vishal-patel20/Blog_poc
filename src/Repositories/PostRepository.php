@@ -101,14 +101,15 @@ class PostRepository implements RepositoryInterface
         $model->initTimestamps();
 
         $stmt = $this->pdo->prepare(
-            'INSERT INTO posts (title, body, status, deleted_at, created_at, updated_at)
-             VALUES (:title, :body, :status, :deleted_at, :created_at, :updated_at)'
+            'INSERT INTO posts (title, body, status, author_id, deleted_at, created_at, updated_at)
+             VALUES (:title, :body, :status, :author_id, :deleted_at, :created_at, :updated_at)'
         );
 
         $stmt->execute([
             ':title'      => $model->getTitle(),
             ':body'       => $model->getBody(),
             ':status'     => $model->getStatus(),
+            ':author_id'  => $model->getAuthorId(),
             ':deleted_at' => $model->getDeletedAt(),
             ':created_at' => $model->getCreatedAt(),
             ':updated_at' => $model->getUpdatedAt(),
