@@ -183,6 +183,8 @@ class PostController
     /**
      * Validate post input fields and throw ValidationException on failure.
      *
+     * Fix #3: Added max-length guards to prevent DoS via oversized payloads.
+     *
      * @param array<string, mixed> $data
      * @param string[]             $required
      * @throws ValidationException
@@ -191,9 +193,23 @@ class PostController
     {
         $errors = [];
 
+        // Required field check
         foreach ($required as $field) {
             if (!isset($data[$field]) || trim((string) $data[$field]) === '') {
                 $errors[$field][] = "The {$field} field is required.";
+            }
+        }
+
+        // Fix #3: Max length enforcement
+        $maxLengths = [
+            'title'  => 255,
+            'body'   => 65535,
+            'status' => 20,
+        ];
+
+        foreach ($maxLengths as $field => $max) {
+            if (isset($data[$field]) && mb_strlen((string) $data[$field]) > $max) {
+                $errors[$field][] = "The {$field} must not exceed {$max} characters.";
             }
         }
 
