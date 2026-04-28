@@ -42,7 +42,10 @@ class Database
                 ]
             );
         } catch (PDOException $e) {
-            throw new RuntimeException('Database connection failed: ' . $e->getMessage(), 0, $e);
+            // Vulnerability Fix #9: Log full detail internally; expose only a generic
+            // message to callers to prevent absolute DB file path disclosure.
+            error_log('[Blog API] Database connection failed: ' . $e->getMessage());
+            throw new RuntimeException('Database connection failed.', 0, $e);
         }
     }
 

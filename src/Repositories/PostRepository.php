@@ -88,7 +88,13 @@ class PostRepository implements RepositoryInterface
      */
     public function save(BaseModel $model): int
     {
-        assert($model instanceof Post);
+        // Vulnerability Fix #10: Replace assert() — silently disabled when
+        // zend.assertions=-1 (production). Use an explicit guard instead.
+        if (!$model instanceof Post) {
+            throw new \InvalidArgumentException(
+                sprintf('Expected Post, got %s.', get_class($model))
+            );
+        }
         $model->initTimestamps();
 
         $stmt = $this->pdo->prepare(
@@ -116,7 +122,12 @@ class PostRepository implements RepositoryInterface
      */
     public function update(BaseModel $model): bool
     {
-        assert($model instanceof Post);
+        // Vulnerability Fix #10: Replace assert() with explicit type guard.
+        if (!$model instanceof Post) {
+            throw new \InvalidArgumentException(
+                sprintf('Expected Post, got %s.', get_class($model))
+            );
+        }
         $model->touchUpdatedAt();
 
         $stmt = $this->pdo->prepare(

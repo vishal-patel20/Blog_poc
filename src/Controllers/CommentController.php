@@ -72,10 +72,16 @@ class CommentController
 
         if (!isset($data['author']) || trim((string) $data['author']) === '') {
             $errors['author'][] = 'The author field is required.';
+        } elseif (mb_strlen((string) $data['author']) > 100) {
+            // Fix #3: Prevent oversized author names
+            $errors['author'][] = 'The author field must not exceed 100 characters.';
         }
 
         if (!isset($data['body']) || trim((string) $data['body']) === '') {
             $errors['body'][] = 'The body field is required.';
+        } elseif (mb_strlen((string) $data['body']) > 10000) {
+            // Fix #3: Prevent oversized comment bodies (DoS guard)
+            $errors['body'][] = 'The body field must not exceed 10,000 characters.';
         }
 
         if (!empty($errors)) {

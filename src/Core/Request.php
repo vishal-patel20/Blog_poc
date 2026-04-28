@@ -106,11 +106,22 @@ class Request
     /**
      * Decode the raw request body as JSON. Falls back to an empty array.
      *
+     * Vulnerability Fix #4: Body is capped at 2 MB (2,097,152 bytes) to prevent
+     * DoS attacks where a caller sends a huge payload to exhaust PHP worker memory.
+     *
      * @return array<string, mixed>
      */
     private function parseBody(): array
     {
-        $raw = file_get_contents('php://input');
+        $maxBytes = 2 * 1024 * 1024; // 2 MB hard cap
+        $handle   = fopen('php://input', 'r');
+
+        if ($handle === false) {
+            return [];
+        }
+
+        $raw = stream_get_contents($handle, $maxBytes);
+        fclose($handle);
 
         if ($raw === false || $raw === '') {
             return [];

@@ -11,6 +11,21 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/vendor/autoload.php';
 
+// ---------------------------------------------------------------------------
+// Load environment variables from .env
+// ---------------------------------------------------------------------------
+// Uses vlucas/phpdotenv to populate $_ENV from the project-root .env file.
+// On production servers that inject env vars at the OS/container level,
+// the .env file may not exist — we fail gracefully in that case.
+$dotenvPath = dirname(__DIR__);
+if (file_exists($dotenvPath . '/.env')) {
+    $dotenv = Dotenv\Dotenv::createImmutable($dotenvPath);
+    $dotenv->load();
+
+    // Validate required keys are present and non-empty
+    $dotenv->required(['API_KEY'])->notEmpty();
+}
+
 use App\Controllers\CommentController;
 use App\Controllers\PostController;
 use App\Core\Request;
@@ -20,11 +35,35 @@ use App\Exceptions\NotFoundException;
 use App\Exceptions\ValidationException;
 
 // ---------------------------------------------------------------------------
-// Boot
+// Boot & Security Pipeline
 // ---------------------------------------------------------------------------
 
 $request = new Request();
 $router  = new Router();
+
+// 1. Rate Limiting Check
+$clientIp = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+\App\Core\RateLimiter::check($clientIp);
+
+// 2. Authentication Check (all endpoints except OPTIONS preflight)
+//    Vulnerability Fix #1: Auth now required for ALL methods, including GET,
+//    to prevent unauthenticated enumeration of draft/private posts.
+if ($request->getMethod() !== 'OPTIONS') {
+    // Fail hard if API_KEY is not configured — no insecure fallback
+    $apiKey = $_ENV['API_KEY'] ?? null;
+    if ($apiKey === null || $apiKey === '') {
+        Response::error('Server misconfiguration. Contact administrator.', 500);
+    }
+
+    // Case-insensitive Bearer token extraction
+    $authHeader = $request->header('Authorization', '');
+    $token = trim((string) preg_replace('/^Bearer\s+/i', '', $authHeader));
+
+    // Vulnerability Fix #2: Use constant-time comparison to prevent timing attacks
+    if (!hash_equals((string) $apiKey, $token)) {
+        Response::error('Unauthorized. Invalid or missing API Key.', 401);
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Register routes
@@ -59,9 +98,11 @@ try {
         'errors'  => $e->getErrors(),
     ], 422);
 } catch (\Throwable $e) {
-    // Generic server error — hide internals in production
-    $debug   = $_ENV['APP_DEBUG'] ?? 'false';
-    $message = $debug === 'true' ? $e->getMessage() : 'Internal Server Error.';
-
-    Response::error($message, 500);
+    // Vulnerability Fix #3: Always return a generic message; log full details server-side.
+    // Never expose exception messages, file paths, or stack traces to clients.
+    error_log(
+        '[Blog API Error] ' . $e->getMessage() .
+        ' in ' . $e->getFile() . ':' . $e->getLine()
+    );
+    Response::error('Internal Server Error.', 500);
 }
