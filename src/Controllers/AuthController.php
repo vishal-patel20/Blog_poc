@@ -66,12 +66,10 @@ class AuthController
             $errors['password'][] = 'Password must contain at least one letter and one number.';
         }
 
-        // --- Validate role (optional, default reader) ---
-        $role    = trim((string) ($data['role'] ?? 'reader'));
-        $allowed = ['admin', 'author', 'reader'];
-        if (!in_array($role, $allowed, true)) {
-            $errors['role'][] = 'Role must be one of: ' . implode(', ', $allowed) . '.';
-        }
+        // --- Fix: Prevent Mass Assignment / Privilege Escalation ---
+        // Do not allow users to specify their own role during public registration.
+        // All new accounts default to 'reader'. Higher privileges must be granted manually.
+        $role = 'reader';
 
         if (!empty($errors)) {
             throw new ValidationException($errors);
