@@ -54,9 +54,15 @@ if (!empty($trustedProxies) && in_array($remoteAddr, $trustedProxies, true)) {
 // 2. Determine if route is public (no JWT required)
 $method   = $request->getMethod();
 $uri      = $request->getUri();
-$isPublic = $method === 'OPTIONS'
-    || ($method === 'POST' && $uri === '/api/auth/register')
-    || ($method === 'POST' && $uri === '/api/auth/login');
+
+// Handle CORS Preflight immediately
+if ($method === 'OPTIONS') {
+    Response::noContent();
+}
+
+$isPublic = ($method === 'POST' && $uri === '/api/auth/register')
+         || ($method === 'POST' && $uri === '/api/auth/login')
+         || ($method === 'GET'  && str_starts_with($uri, '/api/posts'));
 
 // 3. JWT Authentication Middleware
 $currentUser = null;
@@ -90,11 +96,7 @@ if (!$isPublic) {
         }
     }
 
-    // 5. RBAC — readers are read-only, EXCEPT they can post comments
-    $isCommenting = $method === 'POST' && preg_match('#^/api/posts/\d+/comments$#', $uri);
-    if ($currentUser->role === 'reader' && $method !== 'GET' && !$isCommenting) {
-        Response::error('Forbidden. Reader accounts have read-only access (except for commenting).', 403);
-    }
+    // 5. RBAC — users can only edit/delete their own posts (handled in PostController)
 }
 
 // ---------------------------------------------------------------------------

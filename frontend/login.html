@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog REST API - Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <div class="container nav-container">
+            <nav>
+                <a href="index.html" class="brand">BlogAPI</a>
+                <div class="nav-links">
+                    <a href="index.html">Home</a>
+                    <a href="login.html" class="btn btn-primary">Login</a>
+                    <a href="register.html">Register</a>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container" style="max-width: 500px; margin: 0 auto; display: flex; align-items: center; justify-content: center;">
+        <div class="card" style="width: 100%;">
+            <h1 class="text-center mb-1">Welcome Back</h1>
+            <p class="text-center text-muted mb-2">Log in to manage your posts and comments.</p>
+            
+            <div id="error-message" class="alert alert-error hidden"></div>
+
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" required placeholder="you@example.com">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;" id="submit-btn">Login</button>
+            </form>
+            <p class="text-center mt-2 text-muted">
+                Don't have an account? <a href="register.html">Register here</a>
+            </p>
+        </div>
+    </main>
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/login.js"></script>
+</body>
+</html>

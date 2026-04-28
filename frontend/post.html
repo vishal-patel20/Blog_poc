@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog REST API - Post</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <div class="container nav-container">
+            <nav>
+                <a href="index.html" class="brand">BlogAPI</a>
+                <div class="nav-links">
+                    <a href="index.html">Home</a>
+                    <!-- Guest Links -->
+                    <a href="login.html" class="btn btn-primary guest-only">Login</a>
+                    <a href="register.html" class="guest-only">Register</a>
+                    
+                    <!-- Auth Links -->
+                    <a href="dashboard.html" class="auth-required hidden">Dashboard</a>
+                    <span class="auth-required hidden" style="color: var(--text-muted);">Hi, <span id="current-user-name"></span></span>
+                    <button onclick="auth.logout()" class="btn auth-required hidden">Logout</button>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <a href="index.html" class="mb-2" style="display: inline-block;">&larr; Back to Posts</a>
+        
+        <div id="post-content" class="card mb-2">
+            <div class="skeleton skeleton-title"></div>
+            <div class="skeleton skeleton-text"></div>
+            <div class="skeleton skeleton-text"></div>
+            <div class="skeleton skeleton-text skeleton-text-short"></div>
+        </div>
+
+        <section id="comments-section" class="hidden">
+            <h3>Comments</h3>
+            
+            <div id="comments-list" class="card mb-2" style="padding: 0 1.5rem;">
+                <!-- Comments will be loaded here -->
+            </div>
+
+            <div class="card auth-required hidden">
+                <h4>Leave a Comment</h4>
+                <div id="comment-error" class="alert alert-error hidden"></div>
+                <form id="comment-form">
+                    <div class="form-group">
+                        <textarea id="comment-body" rows="3" required placeholder="What are your thoughts?"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="submit-comment">Post Comment</button>
+                </form>
+            </div>
+            
+            <div class="card guest-only text-center">
+                <p>You must be <a href="login.html">logged in</a> to leave a comment.</p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 Blog REST API. Built with Vanilla JS & CSS.</p>
+        </div>
+    </footer>
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/post.js"></script>
+</body>
+</html>
