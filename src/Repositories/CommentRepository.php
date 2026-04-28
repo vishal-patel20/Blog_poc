@@ -50,7 +50,16 @@ class CommentRepository implements RepositoryInterface
      */
     public function findAll(int $page = 1, int $perPage = 100): array
     {
-        $stmt = $this->pdo->query('SELECT * FROM comments ORDER BY created_at ASC');
+        // Vulnerability Fix #11: Apply LIMIT/OFFSET so the method honours its
+        // $page/$perPage parameters. Previously all rows were fetched regardless.
+        $offset = ($page - 1) * $perPage;
+
+        $stmt = $this->pdo->prepare(
+            'SELECT * FROM comments ORDER BY created_at ASC LIMIT :limit OFFSET :offset'
+        );
+        $stmt->bindValue(':limit',  $perPage, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset,  PDO::PARAM_INT);
+        $stmt->execute();
 
         return array_map(
             static fn (array $row) => Comment::fromRow($row),
@@ -81,7 +90,13 @@ class CommentRepository implements RepositoryInterface
      */
     public function save(BaseModel $model): int
     {
-        assert($model instanceof Comment);
+        // Vulnerability Fix #10: Replace assert() — silently disabled when
+        // zend.assertions=-1 (production). Use an explicit guard instead.
+        if (!$model instanceof Comment) {
+            throw new \InvalidArgumentException(
+                sprintf('Expected Comment, got %s.', get_class($model))
+            );
+        }
         $model->initTimestamps();
 
         $stmt = $this->pdo->prepare(
@@ -108,7 +123,12 @@ class CommentRepository implements RepositoryInterface
      */
     public function update(BaseModel $model): bool
     {
-        assert($model instanceof Comment);
+        // Vulnerability Fix #10: Replace assert() with explicit type guard.
+        if (!$model instanceof Comment) {
+            throw new \InvalidArgumentException(
+                sprintf('Expected Comment, got %s.', get_class($model))
+            );
+        }
         $model->touchUpdatedAt();
 
         $stmt = $this->pdo->prepare(

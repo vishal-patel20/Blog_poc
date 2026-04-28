@@ -82,7 +82,8 @@ class Router
             }
         }
 
-        throw new NotFoundException("Route not found: {$method} {$uri}");
+        // Fix #5: Do not reflect user-controlled URI in error messages (info disclosure)
+        throw new NotFoundException('Route not found.');
     }
 
     /**
