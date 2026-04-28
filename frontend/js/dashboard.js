@@ -125,7 +125,7 @@ function handleError(error, errorDiv) {
         try {
             const parsed = JSON.parse(error.message);
             if (parsed.errors) {
-                const messages = Object.values(parsed.errors).flat();
+                const messages = Object.values(parsed.errors).flat().map(escapeHtml);
                 errorDiv.innerHTML = messages.join('<br>');
             } else {
                 errorDiv.textContent = parsed.message || error.message;
