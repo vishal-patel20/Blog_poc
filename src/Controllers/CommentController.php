@@ -23,7 +23,7 @@ class CommentController
     private CommentRepository $commentRepository;
     private PostRepository $postRepository;
 
-    public function __construct()
+    public function __construct(private readonly ?object $currentUser = null)
     {
         $this->commentRepository = new CommentRepository();
         $this->postRepository    = new PostRepository();

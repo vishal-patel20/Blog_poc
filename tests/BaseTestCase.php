@@ -43,7 +43,8 @@ abstract class BaseTestCase extends TestCase
                 id         INTEGER PRIMARY KEY AUTOINCREMENT,
                 title      TEXT    NOT NULL,
                 body       TEXT    NOT NULL,
-                status     TEXT    NOT NULL DEFAULT 'draft',
+                status     TEXT    NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
+                author_id  INTEGER DEFAULT NULL,
                 deleted_at TEXT    DEFAULT NULL,
                 created_at TEXT    NOT NULL,
                 updated_at TEXT    NOT NULL
@@ -58,6 +59,28 @@ abstract class BaseTestCase extends TestCase
                 body       TEXT    NOT NULL,
                 created_at TEXT    NOT NULL,
                 updated_at TEXT    NOT NULL
+            )"
+        );
+
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS users (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                name       TEXT    NOT NULL,
+                email      TEXT    NOT NULL UNIQUE,
+                password   TEXT    NOT NULL,
+                role       TEXT    NOT NULL DEFAULT 'reader'
+                           CHECK (role IN ('admin', 'author', 'reader')),
+                created_at TEXT    NOT NULL,
+                updated_at TEXT    NOT NULL
+            )"
+        );
+
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS token_blacklist (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                token_hash TEXT    NOT NULL UNIQUE,
+                expires_at INTEGER NOT NULL,
+                created_at TEXT    NOT NULL
             )"
         );
 

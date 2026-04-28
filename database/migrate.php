@@ -31,8 +31,18 @@ foreach ($migrations as $file) {
         continue;
     }
 
-    $pdo->exec($sql);
-    echo "Ran: " . basename($file) . "\n";
+    try {
+        $pdo->exec($sql);
+        echo "Ran: " . basename($file) . "\n";
+    } catch (\PDOException $e) {
+        // Gracefully skip already-applied ALTER TABLE ADD COLUMN migrations
+        if (str_contains($e->getMessage(), 'duplicate column')) {
+            echo "Skipped (already applied): " . basename($file) . "\n";
+        } else {
+            echo "ERROR in " . basename($file) . ": " . $e->getMessage() . "\n";
+            exit(1);
+        }
+    }
 }
 
 echo "All migrations completed successfully.\n";
