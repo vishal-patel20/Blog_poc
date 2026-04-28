@@ -70,12 +70,9 @@ class CommentController
         $data   = $request->all();
         $errors = [];
 
-        if (!isset($data['author']) || trim((string) $data['author']) === '') {
-            $errors['author'][] = 'The author field is required.';
-        } elseif (mb_strlen((string) $data['author']) > 100) {
-            // Fix #3: Prevent oversized author names
-            $errors['author'][] = 'The author field must not exceed 100 characters.';
-        }
+        // Fix: Prevent Impersonation — do not allow users to specify arbitrary author names.
+        // Force the author to be the currently authenticated user's name.
+        $authorName = $this->currentUser !== null ? $this->currentUser->name : 'Anonymous';
 
         if (!isset($data['body']) || trim((string) $data['body']) === '') {
             $errors['body'][] = 'The body field is required.';
@@ -90,7 +87,7 @@ class CommentController
 
         $comment = new Comment(
             postId: (int) $params['id'],
-            author: trim((string) $data['author']),
+            author: $authorName,
             body:   trim((string) $data['body']),
         );
 

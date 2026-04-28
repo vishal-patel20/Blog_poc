@@ -90,9 +90,10 @@ if (!$isPublic) {
         }
     }
 
-    // 5. RBAC — readers are read-only
-    if ($currentUser->role === 'reader' && $method !== 'GET') {
-        Response::error('Forbidden. Reader accounts have read-only access.', 403);
+    // 5. RBAC — readers are read-only, EXCEPT they can post comments
+    $isCommenting = $method === 'POST' && preg_match('#^/api/posts/\d+/comments$#', $uri);
+    if ($currentUser->role === 'reader' && $method !== 'GET' && !$isCommenting) {
+        Response::error('Forbidden. Reader accounts have read-only access (except for commenting).', 403);
     }
 }
 
