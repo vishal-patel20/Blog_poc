@@ -1,4 +1,6 @@
 <?php
+
+declare(strict_types=1);
 namespace App\Solid\Lsp;
 use App\Solid\Ocp\NotifierInterface;
 use App\Solid\Ocp\EmailNotifier;
