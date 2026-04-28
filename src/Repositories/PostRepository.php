@@ -40,7 +40,10 @@ class PostRepository implements RepositoryInterface
         $row = $stmt->fetch();
 
         if ($row === false) {
-            throw new NotFoundException("Post with ID {$id} not found.");
+            // Vulnerability Fix #13: Generic message — do not echo the ID back.
+            // Revealing "Post with ID 5 not found" lets attackers enumerate
+            // which IDs exist by watching 200 vs 404 responses.
+            throw new NotFoundException('Post not found.');
         }
 
         return Post::fromRow($row);

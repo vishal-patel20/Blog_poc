@@ -43,7 +43,7 @@ abstract class BaseTestCase extends TestCase
                 id         INTEGER PRIMARY KEY AUTOINCREMENT,
                 title      TEXT    NOT NULL,
                 body       TEXT    NOT NULL,
-                status     TEXT    NOT NULL DEFAULT 'draft',
+                status     TEXT    NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
                 deleted_at TEXT    DEFAULT NULL,
                 created_at TEXT    NOT NULL,
                 updated_at TEXT    NOT NULL

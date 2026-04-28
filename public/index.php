@@ -42,7 +42,21 @@ $request = new Request();
 $router  = new Router();
 
 // 1. Rate Limiting Check
-$clientIp = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+// Vulnerability Fix #14: Safe proxy-aware IP resolution.
+// Set TRUSTED_PROXIES in .env to the IPs of your load balancers.
+// If unset, REMOTE_ADDR is used directly (correct for non-proxied servers).
+$trustedProxies = array_filter(
+    array_map('trim', explode(',', $_ENV['TRUSTED_PROXIES'] ?? ''))
+);
+$remoteAddr = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+
+if (!empty($trustedProxies) && in_array($remoteAddr, $trustedProxies, true)) {
+    // Trust X-Forwarded-For only when request arrives from a known proxy
+    $forwarded = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '';
+    $clientIp  = trim(explode(',', $forwarded)[0]) ?: $remoteAddr;
+} else {
+    $clientIp = $remoteAddr;
+}
 \App\Core\RateLimiter::check($clientIp);
 
 // 2. Authentication Check (all endpoints except OPTIONS preflight)
@@ -62,6 +76,15 @@ if ($request->getMethod() !== 'OPTIONS') {
     // Vulnerability Fix #2: Use constant-time comparison to prevent timing attacks
     if (!hash_equals((string) $apiKey, $token)) {
         Response::error('Unauthorized. Invalid or missing API Key.', 401);
+    }
+
+    // Vulnerability Fix #15: Enforce Content-Type: application/json on write requests.
+    // Prevents confusion attacks from form-encoded or plain-text payloads.
+    if (!in_array($request->getMethod(), ['GET', 'DELETE', 'OPTIONS'], true)) {
+        $contentType = $request->header('content-type', '');
+        if (!str_contains($contentType, 'application/json')) {
+            Response::error('Content-Type must be application/json.', 415);
+        }
     }
 }
 
