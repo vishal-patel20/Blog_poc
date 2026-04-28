@@ -40,7 +40,10 @@ class PostRepository implements RepositoryInterface
         $row = $stmt->fetch();
 
         if ($row === false) {
-            throw new NotFoundException("Post with ID {$id} not found.");
+            // Vulnerability Fix #13: Generic message — do not echo the ID back.
+            // Revealing "Post with ID 5 not found" lets attackers enumerate
+            // which IDs exist by watching 200 vs 404 responses.
+            throw new NotFoundException('Post not found.');
         }
 
         return Post::fromRow($row);
@@ -98,14 +101,15 @@ class PostRepository implements RepositoryInterface
         $model->initTimestamps();
 
         $stmt = $this->pdo->prepare(
-            'INSERT INTO posts (title, body, status, deleted_at, created_at, updated_at)
-             VALUES (:title, :body, :status, :deleted_at, :created_at, :updated_at)'
+            'INSERT INTO posts (title, body, status, author_id, deleted_at, created_at, updated_at)
+             VALUES (:title, :body, :status, :author_id, :deleted_at, :created_at, :updated_at)'
         );
 
         $stmt->execute([
             ':title'      => $model->getTitle(),
             ':body'       => $model->getBody(),
             ':status'     => $model->getStatus(),
+            ':author_id'  => $model->getAuthorId(),
             ':deleted_at' => $model->getDeletedAt(),
             ':created_at' => $model->getCreatedAt(),
             ':updated_at' => $model->getUpdatedAt(),

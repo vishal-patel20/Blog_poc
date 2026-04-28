@@ -92,6 +92,12 @@ class Response
      */
     private static function applySecurityHeaders(): void
     {
+        // Vulnerability Fix #16: Emit a unique X-Request-ID on every response.
+        // Echoes back the caller's ID if provided, or generates one.
+        // This allows correlation of requests across client logs and server error_log().
+        $requestId = $_SERVER['HTTP_X_REQUEST_ID'] ?? bin2hex(random_bytes(8));
+        header("X-Request-ID: {$requestId}");
+
         // Prevent MIME-type sniffing
         header('X-Content-Type-Options: nosniff');
 

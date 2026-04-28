@@ -22,6 +22,7 @@ final class Post extends BaseModel
         private string $title,
         private string $body,
         private string $status = 'draft',
+        private ?int   $authorId = null,
     ) {
     }
 
@@ -45,6 +46,7 @@ final class Post extends BaseModel
         $post->setId((int) $row['id']);
         $post->hydrateTimestamps($row);
         $post->deletedAt = $row['deleted_at'] ?? null;
+        $post->authorId  = isset($row['author_id']) ? (int) $row['author_id'] : null;
 
         return $post;
     }
@@ -104,15 +106,10 @@ final class Post extends BaseModel
         $this->status = $status;
     }
 
-    public function getDeletedAt(): ?string
-    {
-        return $this->deletedAt;
-    }
-
-    public function isDeleted(): bool
-    {
-        return $this->deletedAt !== null;
-    }
+    public function getDeletedAt(): ?string { return $this->deletedAt; }
+    public function isDeleted(): bool        { return $this->deletedAt !== null; }
+    public function getAuthorId(): ?int      { return $this->authorId; }
+    public function setAuthorId(?int $id): void { $this->authorId = $id; }
 
     // ------------------------------------------------------------------
     // BaseModel contract
@@ -133,6 +130,7 @@ final class Post extends BaseModel
             'title'      => $this->title,
             'body'       => $this->body,
             'status'     => $this->status,
+            'author_id'  => $this->authorId,
             'deleted_at' => $this->deletedAt,
             'created_at' => $this->createdAt,
             'updated_at' => $this->updatedAt,

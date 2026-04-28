@@ -25,7 +25,7 @@ class PostController
 {
     private PostRepository $repository;
 
-    public function __construct()
+    public function __construct(private readonly ?object $currentUser = null)
     {
         $this->repository = new PostRepository();
     }
@@ -89,9 +89,10 @@ class PostController
         $this->validatePost($data, required: ['title', 'body']);
 
         $post = new Post(
-            title:  trim((string) $data['title']),
-            body:   trim((string) $data['body']),
-            status: trim((string) ($data['status'] ?? 'draft')),
+            title:    trim((string) $data['title']),
+            body:     trim((string) $data['body']),
+            status:   trim((string) ($data['status'] ?? 'draft')),
+            authorId: $this->currentUser !== null ? (int) $this->currentUser->sub : null,
         );
 
         $id = $this->repository->save($post);
@@ -111,8 +112,9 @@ class PostController
     public function replace(Request $request, array $params): void
     {
         $post = $this->repository->findById((int) $params['id']);
-        $data = $request->all();
+        $this->assertOwnership($post);
 
+        $data = $request->all();
         $this->validatePost($data, required: ['title', 'body', 'status']);
 
         $post->setTitle(trim((string) $data['title']));
@@ -136,19 +138,16 @@ class PostController
     public function update(Request $request, array $params): void
     {
         $post = $this->repository->findById((int) $params['id']);
+        $this->assertOwnership($post);
+
         $data = $request->all();
 
         if (empty($data)) {
             throw new ValidationException(['body' => ['Request body must not be empty.']]);
         }
 
-        if (isset($data['title'])) {
-            $post->setTitle(trim((string) $data['title']));
-        }
-
-        if (isset($data['body'])) {
-            $post->setBody(trim((string) $data['body']));
-        }
+        if (isset($data['title'])) { $post->setTitle(trim((string) $data['title'])); }
+        if (isset($data['body']))  { $post->setBody(trim((string) $data['body'])); }
 
         if (isset($data['status'])) {
             $this->validateStatus((string) $data['status']);
@@ -171,6 +170,9 @@ class PostController
      */
     public function destroy(Request $request, array $params): void
     {
+        $post = $this->repository->findById((int) $params['id']);
+        $this->assertOwnership($post);
+
         $this->repository->delete((int) $params['id']);
 
         Response::json(['message' => 'Post deleted successfully.']);
@@ -241,4 +243,18 @@ class PostController
             ]);
         }
     }
+
+    /**
+     * RBAC ownership check — admin bypasses, author must own the post.
+     */
+    private function assertOwnership(Post $post): void
+    {
+        if ($this->currentUser === null) return;
+        if ($this->currentUser->role === 'admin') return;
+
+        if ($post->getAuthorId() !== (int) $this->currentUser->sub) {
+            Response::error('Forbidden. You can only modify your own posts.', 403);
+        }
+    }
 }
+

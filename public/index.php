@@ -14,20 +14,17 @@ require_once dirname(__DIR__) . '/vendor/autoload.php';
 // ---------------------------------------------------------------------------
 // Load environment variables from .env
 // ---------------------------------------------------------------------------
-// Uses vlucas/phpdotenv to populate $_ENV from the project-root .env file.
-// On production servers that inject env vars at the OS/container level,
-// the .env file may not exist — we fail gracefully in that case.
 $dotenvPath = dirname(__DIR__);
 if (file_exists($dotenvPath . '/.env')) {
     $dotenv = Dotenv\Dotenv::createImmutable($dotenvPath);
     $dotenv->load();
-
-    // Validate required keys are present and non-empty
-    $dotenv->required(['API_KEY'])->notEmpty();
+    $dotenv->required(['JWT_SECRET'])->notEmpty();
 }
 
+use App\Controllers\AuthController;
 use App\Controllers\CommentController;
 use App\Controllers\PostController;
+use App\Core\Auth;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Router;
@@ -41,27 +38,61 @@ use App\Exceptions\ValidationException;
 $request = new Request();
 $router  = new Router();
 
-// 1. Rate Limiting Check
-$clientIp = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+// 1. Rate Limiting — proxy-aware IP resolution
+$trustedProxies = array_filter(
+    array_map('trim', explode(',', $_ENV['TRUSTED_PROXIES'] ?? ''))
+);
+$remoteAddr = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+if (!empty($trustedProxies) && in_array($remoteAddr, $trustedProxies, true)) {
+    $forwarded = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '';
+    $clientIp  = trim(explode(',', $forwarded)[0]) ?: $remoteAddr;
+} else {
+    $clientIp = $remoteAddr;
+}
 \App\Core\RateLimiter::check($clientIp);
 
-// 2. Authentication Check (all endpoints except OPTIONS preflight)
-//    Vulnerability Fix #1: Auth now required for ALL methods, including GET,
-//    to prevent unauthenticated enumeration of draft/private posts.
-if ($request->getMethod() !== 'OPTIONS') {
-    // Fail hard if API_KEY is not configured — no insecure fallback
-    $apiKey = $_ENV['API_KEY'] ?? null;
-    if ($apiKey === null || $apiKey === '') {
-        Response::error('Server misconfiguration. Contact administrator.', 500);
+// 2. Determine if route is public (no JWT required)
+$method   = $request->getMethod();
+$uri      = $request->getUri();
+$isPublic = $method === 'OPTIONS'
+    || ($method === 'POST' && $uri === '/api/auth/register')
+    || ($method === 'POST' && $uri === '/api/auth/login');
+
+// 3. JWT Authentication Middleware
+$currentUser = null;
+
+if (!$isPublic) {
+    $authHeader = $request->header('Authorization', '');
+    $token      = Auth::extractBearer((string) $authHeader);
+
+    if ($token === '') {
+        Response::error('Unauthorized. Bearer token required.', 401);
     }
 
-    // Case-insensitive Bearer token extraction
-    $authHeader = $request->header('Authorization', '');
-    $token = trim((string) preg_replace('/^Bearer\s+/i', '', $authHeader));
+    try {
+        $currentUser = Auth::decodeToken($token);
+    } catch (\Firebase\JWT\ExpiredException) {
+        Response::error('Unauthorized. Token has expired. Please log in again.', 401);
+    } catch (\Throwable) {
+        Response::error('Unauthorized. Invalid token.', 401);
+    }
 
-    // Vulnerability Fix #2: Use constant-time comparison to prevent timing attacks
-    if (!hash_equals((string) $apiKey, $token)) {
-        Response::error('Unauthorized. Invalid or missing API Key.', 401);
+    // Check if token was explicitly revoked (logout)
+    if (Auth::isBlacklisted($token)) {
+        Response::error('Unauthorized. Token has been revoked. Please log in again.', 401);
+    }
+
+    // 4. Content-Type enforcement for write requests
+    if (!in_array($method, ['GET', 'DELETE', 'OPTIONS'], true)) {
+        $contentType = $request->header('content-type', '');
+        if (!str_contains($contentType, 'application/json')) {
+            Response::error('Content-Type must be application/json.', 415);
+        }
+    }
+
+    // 5. RBAC — readers are read-only
+    if ($currentUser->role === 'reader' && $method !== 'GET') {
+        Response::error('Forbidden. Reader accounts have read-only access.', 403);
     }
 }
 
@@ -69,19 +100,26 @@ if ($request->getMethod() !== 'OPTIONS') {
 // Register routes
 // ---------------------------------------------------------------------------
 
-$postController    = new PostController();
-$commentController = new CommentController();
+$authController    = new AuthController($currentUser);
+$postController    = new PostController($currentUser);
+$commentController = new CommentController($currentUser);
+
+// Auth routes (register & login are public; logout & me require valid JWT)
+$router->post('/api/auth/register', [$authController, 'register']);
+$router->post('/api/auth/login',    [$authController, 'login']);
+$router->post('/api/auth/logout',   [$authController, 'logout']);
+$router->get('/api/auth/me',        [$authController, 'me']);
 
 // Post endpoints
-$router->get('/api/posts', [$postController, 'index']);
-$router->get('/api/posts/{id}', [$postController, 'show']);
-$router->post('/api/posts', [$postController, 'store']);
-$router->put('/api/posts/{id}', [$postController, 'replace']);
-$router->patch('/api/posts/{id}', [$postController, 'update']);
+$router->get('/api/posts',         [$postController, 'index']);
+$router->get('/api/posts/{id}',    [$postController, 'show']);
+$router->post('/api/posts',        [$postController, 'store']);
+$router->put('/api/posts/{id}',    [$postController, 'replace']);
+$router->patch('/api/posts/{id}',  [$postController, 'update']);
 $router->delete('/api/posts/{id}', [$postController, 'destroy']);
 
 // Comment endpoints
-$router->get('/api/posts/{id}/comments', [$commentController, 'index']);
+$router->get('/api/posts/{id}/comments',  [$commentController, 'index']);
 $router->post('/api/posts/{id}/comments', [$commentController, 'store']);
 
 // ---------------------------------------------------------------------------
@@ -93,16 +131,8 @@ try {
 } catch (NotFoundException $e) {
     Response::error($e->getMessage(), 404);
 } catch (ValidationException $e) {
-    Response::json([
-        'message' => $e->getMessage(),
-        'errors'  => $e->getErrors(),
-    ], 422);
+    Response::json(['message' => $e->getMessage(), 'errors' => $e->getErrors()], 422);
 } catch (\Throwable $e) {
-    // Vulnerability Fix #3: Always return a generic message; log full details server-side.
-    // Never expose exception messages, file paths, or stack traces to clients.
-    error_log(
-        '[Blog API Error] ' . $e->getMessage() .
-        ' in ' . $e->getFile() . ':' . $e->getLine()
-    );
+    error_log('[Blog API Error] ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
     Response::error('Internal Server Error.', 500);
 }

@@ -127,7 +127,10 @@ class Request
             return [];
         }
 
-        $decoded = json_decode($raw, true);
+        // Vulnerability Fix #12: Limit JSON nesting depth to 16.
+        // Default depth is 512 — a deeply nested 2 MB payload can exhaust
+        // hundreds of MB of PHP worker memory within the allowed body size.
+        $decoded = json_decode($raw, true, 16);
 
         return is_array($decoded) ? $decoded : [];
     }

@@ -37,7 +37,8 @@ class CommentRepository implements RepositoryInterface
         $row = $stmt->fetch();
 
         if ($row === false) {
-            throw new NotFoundException("Comment with ID {$id} not found.");
+            // Vulnerability Fix #13: Generic message — do not echo the ID back.
+            throw new NotFoundException('Comment not found.');
         }
 
         return Comment::fromRow($row);
