@@ -1,28 +1,48 @@
 const API_BASE_URL = 'http://localhost:8000/api';
 
+// Cache the CSRF token in memory to avoid fetching on every request
+let _csrfToken = null;
+
+async function getCsrfToken() {
+    if (_csrfToken) return _csrfToken;
+    try {
+        const res = await fetch(`${API_BASE_URL}/csrf-token`, { credentials: 'include' });
+        const data = await res.json();
+        _csrfToken = data.token;
+    } catch (e) {
+        console.error('Failed to fetch CSRF token', e);
+    }
+    return _csrfToken;
+}
+
 /**
- * Helper to make API requests with automatic Authorization header
+ * Helper to make API requests with secure session cookies and CSRF headers.
  */
 async function apiFetch(endpoint, options = {}) {
-    const token = localStorage.getItem('token');
-    
+    const method = options.method || 'GET';
+
     const headers = {
         'Content-Type': 'application/json',
         ...options.headers,
     };
 
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+    // Attach CSRF token for all state-changing requests
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method.toUpperCase())) {
+        const csrfToken = await getCsrfToken();
+        if (csrfToken) {
+            headers['X-CSRF-Token'] = csrfToken;
+        }
     }
 
     const config = {
         ...options,
         headers,
+        credentials: 'include', // Always send session cookie
     };
 
     try {
         const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-        
+
         // Handle 204 No Content
         if (response.status === 204) {
             return null;
@@ -31,9 +51,12 @@ async function apiFetch(endpoint, options = {}) {
         const data = await response.json();
 
         if (!response.ok) {
-            // Handle token expiration/revocation
+            // Session expired — redirect to login
             if (response.status === 401) {
-                auth.logout(false); // Logout without API call to avoid loops
+                _csrfToken = null; // Invalidate CSRF token cache
+                if (typeof auth !== 'undefined') {
+                    auth.logout(false);
+                }
             }
             throw new Error(data.error || data.message || 'An error occurred');
         }

@@ -1,0 +1,220 @@
+PHP Trainee POC Series  POC 04 — Hardened Auth & PHP Security  
+Confidential — Internal Use Only  Page 1 POC 04 / 04  
+Hardened Auth System  
+POC 4 — PHP Security: Vulnerabilities, Hardening & Secure Coding Practices  
+PHP Trainee Programme   |   Proof of Concept Document   |   2026  
+  PHP Trainee POC Series  POC 04 — Hardened Auth & PHP Security  
+Confidential — Internal Use Only  Page 2 1.  Project Overview  
+Security is not a feature — it is a requirement. This final POC places you in the role of a security -aware PHP developer. You 
+will build a hardened authentication and user management system that explicitly defends against the most critical web 
+application vulnerabilities, while also deliberately identifying and fixing security flaws in a provided vulnerable codebase.  
+ 
+This POC has two parts: (A) audit and fix a vulnerable PHP application, and (B) build a new hardened authentication module 
+from scratch using security -first principles. Both parts are required.  
+ 
+Difficulty  Advanced — Capstone  Estimated Time  6 – 10 days  
+Focus  Security audit, hardening, secure auth  Prerequisites  POC 1 & 2 
+completed  
+ 
+2.  Part A — Security Audit  
+You will be given access to a deliberately vulnerable PHP application (DVPA — Damn Vulnerable PHP App). Your task is to 
+identify, exploit (in your local environment only), document, and fix all vulnerabilities. This simulates a real -world 
+penetration test and remediation cycle.  
+ 
+IMPORTANT: All exploitation activity must be performed ONLY against the provided local application. Never 
+test security vulnerabilities against live systems, third -party websites, or any system you do not own. Doing so 
+is illegal.  
+ 
+2.1  Vulnerabilities to Identify & Fix  
+Vulnerability  What to Do  
+SQL Injection (SQLi)  Find the vulnerable query, demonstrate it extracts data, fix with PDO prepared 
+statements  
+Cross -Site Scripting (XSS)  Identify reflected and stored XSS, demonstrate alert execution, fix with 
+htmlspecialchars() and CSP header  
+Cross -Site Request Forgery 
+(CSRF)  Show a forged form submission works, then implement CSRF token validation on all 
+state -changing forms  
+Insecure Direct Object 
+Reference  Demonstrate access to another user's data via URL manipulation, fix with 
+ownership checks  
+Broken Authentication  Identify weak session handling, fix with session regeneration after login and 
+absolute timeouts  
+Sensitive Data Exposure  Find plaintext passwords or secrets in code/DB, fix with password_hash() and .env 
+files 
+Security Misconfiguration  Identify exposed error messages / directory listing, fix with custom error handler 
+and php.ini hardening  
+ 
+2.2  Vulnerability Report Format  PHP Trainee POC Series  POC 04 — Hardened Auth & PHP Security  
+Confidential — Internal Use Only  Page 3 For each vulnerability found, complete a report entry using this structure:  
+ 
+VULNERABILITY -REPORT.md format  
+## Vulnerability Report: SQL Injection — Login Form  
+ 
+### Severity:   CRITICAL  
+### OWASP Ref:  A03:2021 — Injection  
+ 
+### Location  
+File: src/Auth/LoginController.php, Line 47  
+ 
+### Vulnerable Code  
+$query = "SELECT * FROM users WHERE email = '" . $_POST['email'] . "'";  
+ 
+### How to Reproduce  
+1. Navigate to /login  
+2. Enter: ' OR '1'='1' -- in the email field  
+3. Enter any password  
+4. Result: logged in as first user in the database  
+ 
+### Impact  
+Attacker can bypass authentication and access any account.  
+Potential for full database dump via UNION -based injection.  
+ 
+### Fix Applied  
+$stmt = $pdo ->prepare('SELECT * FROM users WHERE email = ?');  
+$stmt->execute([$_POST['email']]);  
+ 
+### Verification  
+Re-running the exploit payload now returns HTTP 401.  
+ 
+3.  Part B — Hardened Authentication Module  
+Build a new, security -hardened authentication system in PHP 8.1. This must be standalone — not a copy of your existing 
+POC code. Every security control must be explicitly implemented and documented.  
+ 
+3.1  Password Handling  
+PasswordService.php  
+// ✅ CORRECT — PHP 8 hardened password handling  
+ 
+final class PasswordService  
+{ 
+    private const ALGORITHM = PASSWORD_ARGON2ID;  
+    private const OPTIONS   = ['memory_cost' => 65536, 'time_cost' => 4, 'threads' 
+=> 1];  
+ 
+    public function hash(string $plaintext): string  
+    { 
+        return password_hash($plaintext, self::ALGORITHM, self::OPTIONS);  
+    } 
+ 
+    public function verify(string $plaintext, string $hash): bool  PHP Trainee POC Series  POC 04 — Hardened Auth & PHP Security  
+Confidential — Internal Use Only  Page 4     { 
+        return password_verify($plaintext, $hash);  
+    } 
+ 
+    public function needsRehash(string $hash): bool  
+    { 
+        return password_needs_rehash($hash, self::ALGORITHM, self::OPTIONS);  
+    } 
+} 
+ 
+// ❌ NEVER DO THIS — these are instant review failures  
+md5($_POST['password']);       // Cryptographically broken  
+sha1($_POST['password']);      // Cryptographically broken  
+base64_encode($password);      // Not hashing — just encoding  
+ 
+3.2  Session Security  
+Control  Implementation Required  
+Session regeneration  Call session_regenerate_id(true) immediately after successful login  
+Session fixation prevention  Destroy old session, generate new ID — never accept session ID from URL  
+Absolute timeout  Store login timestamp in session — force re -login after 8 hours regardless of activity  
+Idle timeout  Track last_activity in session — force re -login after 30 minutes of inactivity  
+Secure cookie flags  Set session.cookie_secure=1, session.cookie_httponly=1, 
+session.cookie_samesite=Strict  
+Session data validation  Verify user agent and IP match session on every request (with documented trade -
+off) 
+ 
+3.3  CSRF Protection  
+CsrfToken.php  
+final class CsrfToken  
+{ 
+    public static function generate(): string  
+    { 
+        if (empty($_SESSION['csrf_token'])) {  
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));  
+        } 
+        return $_SESSION['csrf_token'];  
+    } 
+ 
+    public static function validate(string $token): bool  
+    { 
+        // hash_equals prevents timing attacks  
+        return isset($_SESSION['csrf_token'])  
+            && hash_equals($_SESSION['csrf_token'], $token);  
+    } 
+} 
+ 
+// In every POST handler:  
+if (!CsrfToken::validate($_POST['_token'] ?? '')) {  PHP Trainee POC Series  POC 04 — Hardened Auth & PHP Security  
+Confidential — Internal Use Only  Page 5     http_response_code(403);  
+    throw new SecurityException('CSRF token mismatch');  
+} 
+ 
+3.4  Additional Security Controls to Implement  
+Control  Requirement  
+Brute force protection  Lock account for 15 min after 5 failed login attempts — store attempt count in DB  
+Input validation  Whitelist -validate all inputs — never use blacklist approach  
+Output encoding  htmlspecialchars($output, ENT_QUOTES | ENT_HTML5, 'UTF -8') on ALL user -
+generated output  
+Security headers  Implement: Content -Security -Policy, X -Frame -Options, X -Content -Type -Options, 
+Referrer -Policy  
+Error handling  Custom error handler — never expose stack traces, database errors, or file paths to 
+the client  
+Rate limiting  Limit API/login requests to 10 per minute per IP using token bucket or leaky bucket 
+algorithm  
+2FA (Bonus)  Implement TOTP -based two -factor authentication using a TOTP library (e.g., 
+spomky -labs/otphp)  
+ 
+4.  Security Headers Implementation  
+SecurityHeaders.php  
+// SecurityHeaders.php — apply on every response  
+ 
+final class SecurityHeaders  
+{ 
+    public static function apply(): void  
+    { 
+        // Prevent clickjacking  
+        header('X -Frame-Options: DENY');  
+ 
+        // Prevent MIME type sniffing  
+        header('X -Content-Type-Options: nosniff');  
+ 
+        // Control referrer information  
+        header('Referrer -Policy: strict -origin-when-cross-origin');  
+ 
+        // Prevent XSS via strict CSP  
+        header("Content -Security -Policy: default -src 'self'; " .  
+               "script-src 'self'; style -src 'self' 'unsafe -inline'; " .  
+               "img-src 'self' data:; font -src 'self'; " .  
+               "connect -src 'self'; frame -ancestors 'none'");  
+ 
+        // Remove PHP version disclosure  
+        header_remove('X -Powered-By');  
+    } 
+} PHP Trainee POC Series  POC 04 — Hardened Auth & PHP Security  
+Confidential — Internal Use Only  Page 6  
+5.  Acceptance Criteria  
+Criterion  Pass Condition  
+Part A: All 7 vulnerabilities 
+found  Vulnerability report documents all 7 with reproduce steps and fix  
+Part A: All fixes verified  Re-running each exploit payload after the fix no longer succeeds  
+Passwords use Argon2ID  No MD5, SHA1, or base64 — confirmed by code review and DB inspection  
+CSRF tokens on all forms  Submitting a form without a valid token returns HTTP 403  
+Session hardening complete  All 6 session controls present and verified in browser DevTools  
+Brute force protection active  6th login attempt within 15 min returns HTTP 429 or account locked message  
+Security headers present  https://securityheaders.com scan of local tunnel returns A rating  
+Error handling safe  Setting invalid DB credentials shows a safe error page — not a PDO exception  
+Rate limiting works  11th request within 60 seconds from same IP is rejected  
+No secrets in Git  git log --all -p | grep -i 'password \|secret \|key' returns nothing sensitive  
+ 
+6.  Submission Requirements  
+1. GitHub repository with hardened auth module — with SECURITY.md documenting all controls  
+2. VULNERABILITY -REPORT.md with all 7 vulnerability reports in the required format  
+3. Browser DevTools screenshot showing security headers on response  
+4. Screenshot of failed brute -force attempt (rate limiting / account lockout active)  
+5. Screenshot of CSRF rejection (403 response when token is missing or forged)  
+6. Reflection (max 300 words): What is the most dangerous security mistake PHP developers make and how would 
+you prevent it in a code review?  
+ 
+This POC will be reviewed with security in mind. Any submission that contains plaintext passwords in the 
+database, SQL queries built via string concatenation, or unencoded user output in HTML will be returned 
+without review.  
+ 

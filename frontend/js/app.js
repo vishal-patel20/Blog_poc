@@ -1,8 +1,9 @@
 let currentPage = 1;
 const perPage = 5;
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Initialize UI based on auth state
+document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize UI based on auth state (fetch user from session)
+    await auth.loadUser();
     auth.updateAuthUI();
     
     // Load posts

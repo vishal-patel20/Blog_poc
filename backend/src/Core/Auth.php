@@ -120,19 +120,19 @@ class Auth
     // ------------------------------------------------------------------
 
     /**
-     * Hash a plaintext password with bcrypt (cost 12).
+     * Hash a plaintext password with Argon2ID.
      */
     public static function hashPassword(string $password): string
     {
-        return password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
+        return (new \App\Core\PasswordService())->hash($password);
     }
 
     /**
-     * Verify a plaintext password against a bcrypt hash.
+     * Verify a plaintext password against an Argon2ID hash.
      */
     public static function verifyPassword(string $password, string $hash): bool
     {
-        return password_verify($password, $hash);
+        return (new \App\Core\PasswordService())->verify($password, $hash);
     }
 
     // ------------------------------------------------------------------

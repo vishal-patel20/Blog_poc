@@ -14,7 +14,7 @@ namespace App\Core;
 class RateLimiter
 {
     private const FILE_PATH = __DIR__ . '/../../database/rate_limits.json';
-    private const LIMIT     = 60; // Max requests per window
+    private const LIMIT     = 10; // Max requests per window
     private const WINDOW    = 60; // Window duration in seconds
 
     public static function check(string $ip): void
