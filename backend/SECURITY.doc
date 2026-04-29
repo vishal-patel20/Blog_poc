@@ -1,0 +1,50 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" 
+xmlns:w="urn:schemas-microsoft-com:office:word" 
+xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"><title>Report</title></head>
+<body>
+<h1>SECURITY.md</h1>
+<h2>Security Controls and Hardening</h2>
+<p>This document outlines the security controls implemented in the hardened Authentication and Authorization module for the Blog REST API.</p>
+<h3>1. Password Handling</h3>
+<p>Passwords are never stored in plaintext. The system uses PHP's native <code>password_hash()</code> API. 
+Currently configured to use the strong <strong>bcrypt</strong> algorithm with a cost factor of <code>12</code>, ensuring resistance against brute-force and dictionary attacks. Password hashes are never exposed in API responses (specifically stripped out of the <code>toArray()</code> method of the User model).</p>
+<h3>2. Authentication &amp; Session Security (JWT)</h3>
+<p>The application has migrated away from traditional cookie-based sessions to a modern <strong>JSON Web Token (JWT)</strong> architecture using <code>firebase/php-jwt</code>.
+* <strong>Statelessness:</strong> No session fixation vulnerabilities.
+* <strong>Token Blacklisting:</strong> When a user logs out, the JWT hash is permanently added to an SQLite-backed <code>token_blacklist</code> table. This provides immediate, secure token revocation capabilities, a common weakness in standard JWT implementations.
+* <strong>Timing Attack Prevention:</strong> The login endpoint performs a dummy hash calculation if a user is not found, ensuring the response time remains constant whether the user exists or not (preventing username enumeration).</p>
+<h3>3. CSRF Protection</h3>
+<p>As a stateless REST API, the system is immune to Cross-Site Request Forgery (CSRF) by design. 
+Tokens are managed entirely by the JavaScript client and sent via the <code>Authorization: Bearer &lt;token&gt;</code> header, rather than relying on browser-automatically-attached cookies.</p>
+<h3>4. Injection Prevention</h3>
+<ul>
+<li><strong>SQL Injection (SQLi):</strong> 100% of database queries utilize <strong>PDO Prepared Statements</strong>. No dynamic data is ever concatenated into SQL strings.</li>
+<li><strong>Cross-Site Scripting (XSS):</strong> <ul>
+<li>The backend enforces <code>application/json</code> Content-Type globally.</li>
+<li>JSON serialization utilizes strict flags (<code>JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT</code>) to neutralize any HTML payloads before they reach the client.</li>
+<li>The frontend JavaScript strictly uses an <code>escapeHtml()</code> utility to sanitize all user-generated content and API error messages before DOM insertion.</li>
+</ul>
+</li>
+</ul>
+<h3>5. Rate Limiting (Brute Force / DoS Protection)</h3>
+<p>A proxy-aware, atomic File-based Rate Limiter guards the API.
+* <strong>Algorithm:</strong> Sliding window counting. Limit is strictly <strong>60 requests per 60 seconds</strong>.
+* <strong>Race Condition Safe:</strong> Uses exclusive file locking (<code>flock(LOCK_EX)</code>) to guarantee atomic read-modify-write cycles, preventing TOCTOU bypasses.
+* <strong>Fail-Closed:</strong> If the rate limiter encounters filesystem errors, it safely rejects requests with a 503 error rather than failing open.</p>
+<h3>6. Security Headers</h3>
+<p>The API explicitly emits strict HTTP security headers on every response:
+* <code>Content-Security-Policy: default-src 'none'; frame-ancestors 'none'</code> (Ensures the API cannot execute scripts or be framed).
+* <code>X-Content-Type-Options: nosniff</code> (Prevents MIME-sniffing).
+* <code>Referrer-Policy: no-referrer</code>
+* <code>Permissions-Policy: geolocation=(), microphone=(), camera=()</code>
+* <strong>CORS Restrictions:</strong> A strict CORS policy is enforced, only allowing configured origins via the <code>.env</code> file instead of <code>*</code> wildcards.</p>
+<h3>7. Error Handling &amp; Exception Masking</h3>
+<p>The application uses a custom global exception handler. 
+Under no circumstances are stack traces, database schema details, or absolute file paths exposed to the client. All uncaught exceptions are trapped, logged securely to the internal server log, and masked behind a generic <code>500 Internal Server Error</code> JSON response.</p>
+<h3>8. Role-Based Access Control (RBAC) &amp; IDOR Protection</h3>
+<p>Granular endpoint protection enforces both authentication and authorization:
+* Users are strictly assigned roles (<code>admin</code>, <code>author</code>, <code>reader</code>).
+* Resource modification (<code>PUT</code>, <code>PATCH</code>, <code>DELETE</code>) is guarded by rigorous ownership checks. A user can only modify resources where the <code>author_id</code> precisely matches their JWT Subject (<code>sub</code>), unless they hold the <code>admin</code> role.</p>
+</body>
+</html>
