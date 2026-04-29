@@ -4,3 +4,4 @@ backend/database/rate_limits.json
 *.log
 .DS_Store
 backend/.env
+.env
